@@ -2,39 +2,57 @@
   hosts: all
   become: true
   vars_files:
-    - vars.yml  # Include external variables file
+    - vars.yml  
   tasks:
-    # Step 1: Install required packages
-    - name: Install NGINX, zip, unzip, curl
+    # Install required packages
+    - name: Install NGINX, Certbot, zip, unzip, curl
       apt:
         name:
           - nginx
+          - certbot
+          - python3-certbot-nginx  # Certbot plugin for NGINX
           - zip
           - unzip
           - curl
         state: latest
         update_cache: true
 
-    # Step 2: Install V2Ray using the official install script
+    # NGINX is started before obtaining SSL
+    - name: Ensure NGINX is running
+      systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+    # Obtain Let's Encrypt SSL certificate
+    - name: Obtain SSL certificate with Certbot
+      shell: |
+        certbot --nginx -d "{{ domain_name }}" --non-interactive --agree-tos -m "{{ admin_email }}"
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+      notify:
+        - reload nginx
+
+    # Install V2Ray using the official install script
     - name: Install V2Ray Core using the official script
       shell: |
         bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
       args:
         creates: /usr/local/bin/v2ray
 
-    # Step 3: Ensure V2Ray service is enabled and running
+    # Ensure V2Ray service is enabled and running
     - name: Enable and start V2Ray service
       systemd:
         name: "{{ v2ray_service_name }}"
         state: started
         enabled: true
 
-    # Step 4: Generate a new UUID
+    # Generate a new UUID
     - name: Generate a UUID for V2Ray
       command: uuidgen
       register: uuid_output
 
-    # Step 5: Ensure required directories exist
+    # Ensure required directories exist
     - name: Create required directories
       file:
         path: "{{ item }}"
@@ -45,7 +63,7 @@
       with_items:
         - "{{ qr_code_output_dir }}"
 
-    # Step 6: Create V2Ray configuration file
+    # Create V2Ray configuration file
     - name: Create V2Ray configuration file
       copy:
         dest: "{{ v2ray_config_path }}"
@@ -87,7 +105,7 @@
       notify:
         - restart v2ray
 
-    # Step 7: Replace your-domain in NGINX configuration with domain_name
+    # Replace in NGINX configuration with domain_name
     - name: Replace domain_name in NGINX configuration
       template:
         src: ./default.j2  # Jinja2 template with placeholders
@@ -98,7 +116,7 @@
       notify:
         - reload nginx
 
-    # Step 8: Deploy custom scripts
+    # Deploy custom scripts
     - name: Deploy add_connection.sh script
       copy:
         src: ./add_connection.sh
@@ -115,7 +133,7 @@
         group: root
         mode: '0755'
 
-    # Step 9: Ensure NGINX is enabled and running
+    # Step 10: Ensure NGINX is enabled and running
     - name: Start and enable NGINX
       systemd:
         name: nginx
