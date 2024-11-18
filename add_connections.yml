@@ -1,0 +1,27 @@
+- name: Deploy and Generate New Connections
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yml  # External variables file
+  tasks:
+    # SSH and run the add_connection.sh script
+    - name: Add new connections using add_connection.sh
+      shell: |
+        cd /usr/local/bin
+        ./add_connection.sh {{ num_connections }}
+      args:
+        chdir: "/usr/local/bin"  # Directory where the script is located
+
+    # Generate QR codes for the newly added connections
+    - name: Generate QR codes using generate_qr.sh
+      shell: |
+        ./generate_qr.sh
+      args:
+        chdir: "/usr/local/bin"  
+
+    #Fetch the QR code images
+    - name: Download generated QR codes to local machine
+      fetch:
+        src: "{{ qr_code_output_dir }}/*.png"
+        dest: "./qr_codes/"
+        flat: yes  # Save files directly in the destination directory
