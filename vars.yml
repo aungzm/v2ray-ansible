@@ -1,0 +1,6 @@
+v2ray_config_path: /usr/local/etc/v2ray/config.json
+v2ray_service_name: v2ray
+qr_code_output_dir: /usr/local/etc/v2ray/qrcodes
+nginx_sites_enabled: /etc/nginx/sites-enabled/default
+v2ray_port: 8300  # Default port for V2Ray inbound
+domain_name: your-domain
