@@ -6,10 +6,10 @@ map $uri $target_port {
 
 server {
     listen 443 ssl;
-    server_name vpn.example.com;
+    server_name {{ domain_name }};
 
-    ssl_certificate /etc/letsencrypt/live/your-domain/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
 
     location ~ ^/proxy/ {
         # Check if $target_port is valid
