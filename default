@@ -1,0 +1,27 @@
+# Define a valid port range using the map directive
+map $uri $target_port {
+    default 0;  # Default to 0 (invalid) for any path not matching the pattern
+    ~^/proxy/(8(?:3[0-9][0-9]|4[0-4][0-9]))$ $1;  # Matches /proxy/8300 to /proxy/8449
+}
+
+server {
+    listen 443 ssl;
+    server_name vpn.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/your-domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
+
+    location ~ ^/proxy/ {
+        # Check if $target_port is valid
+        if ($target_port = 0) {
+            return 403;  # Block requests with invalid or unlisted ports
+        }
+
+        # Proxy the request to the correct port dynamically
+        proxy_pass http://127.0.0.1:$target_port;  # Use 127.0.0.1 instead of 0.0.0.0
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
