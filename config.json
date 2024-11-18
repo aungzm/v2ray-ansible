@@ -1,0 +1,31 @@
+{
+  "log": {
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 8300,  
+      "protocol": "vmess",  
+      "settings": {
+        "clients": [
+          {
+            "id": "your-uuid-here",  
+            "alterId": 0  
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",  
+        "wsSettings": {
+          "path": "/proxy/8300"  
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",  
+      "settings": {}
+    }
+  ]
+}
