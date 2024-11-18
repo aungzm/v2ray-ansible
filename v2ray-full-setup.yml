@@ -3,7 +3,6 @@
   become: true
   vars_files:
     - vars.yml  # Include external variables file
-
   tasks:
     # Step 1: Install required packages
     - name: Install NGINX, zip, unzip, curl
@@ -26,7 +25,7 @@
     # Step 3: Ensure V2Ray service is enabled and running
     - name: Enable and start V2Ray service
       systemd:
-        name: v2ray
+        name: "{{ v2ray_service_name }}"
         state: started
         enabled: true
 
@@ -46,7 +45,7 @@
       with_items:
         - "{{ qr_code_output_dir }}"
 
-    # Step 6: Create V2Ray configuration with dynamic UUID
+    # Step 6: Create V2Ray configuration file
     - name: Create V2Ray configuration file
       copy:
         dest: "{{ v2ray_config_path }}"
@@ -88,10 +87,10 @@
       notify:
         - restart v2ray
 
-    # Step 7: Deploy the NGINX configuration
-    - name: Deploy NGINX configuration
-      copy:
-        src: ./default
+    # Step 7: Replace your-domain in NGINX configuration with domain_name
+    - name: Replace domain_name in NGINX configuration
+      template:
+        src: ./default.j2  # Jinja2 template with placeholders
         dest: "{{ nginx_sites_enabled }}"
         owner: root
         group: root
@@ -124,13 +123,11 @@
         enabled: true
 
   handlers:
-    # Handler to restart V2Ray service
     - name: restart v2ray
       systemd:
         name: v2ray
         state: restarted
 
-    # Handler to reload NGINX service
     - name: reload nginx
       systemd:
         name: nginx
