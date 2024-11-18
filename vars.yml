@@ -4,3 +4,5 @@ qr_code_output_dir: /usr/local/etc/v2ray/qrcodes
 nginx_sites_enabled: /etc/nginx/sites-enabled/default
 v2ray_port: 8300  # Default port for V2Ray inbound
 domain_name: your-domain
+admin_email: admin@example.com  # Email for Let's Encrypt
+num_connections: 5  # Number of new connections to add
