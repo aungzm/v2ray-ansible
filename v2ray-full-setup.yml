@@ -1,0 +1,137 @@
+- name: Complete V2Ray and NGINX Setup
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yml  # Include external variables file
+
+  tasks:
+    # Step 1: Install required packages
+    - name: Install NGINX, zip, unzip, curl
+      apt:
+        name:
+          - nginx
+          - zip
+          - unzip
+          - curl
+        state: latest
+        update_cache: true
+
+    # Step 2: Install V2Ray using the official install script
+    - name: Install V2Ray Core using the official script
+      shell: |
+        bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
+      args:
+        creates: /usr/local/bin/v2ray
+
+    # Step 3: Ensure V2Ray service is enabled and running
+    - name: Enable and start V2Ray service
+      systemd:
+        name: v2ray
+        state: started
+        enabled: true
+
+    # Step 4: Generate a new UUID
+    - name: Generate a UUID for V2Ray
+      command: uuidgen
+      register: uuid_output
+
+    # Step 5: Ensure required directories exist
+    - name: Create required directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      with_items:
+        - "{{ qr_code_output_dir }}"
+
+    # Step 6: Create V2Ray configuration with dynamic UUID
+    - name: Create V2Ray configuration file
+      copy:
+        dest: "{{ v2ray_config_path }}"
+        content: |
+          {
+            "log": {
+              "loglevel": "info"
+            },
+            "inbounds": [
+              {
+                "port": {{ v2ray_port }},
+                "protocol": "vmess",
+                "settings": {
+                  "clients": [
+                    {
+                      "id": "{{ uuid_output.stdout }}",
+                      "alterId": 0
+                    }
+                  ]
+                },
+                "streamSettings": {
+                  "network": "ws",
+                  "wsSettings": {
+                    "path": "/proxy/{{ v2ray_port }}"
+                  }
+                }
+              }
+            ],
+            "outbounds": [
+              {
+                "protocol": "freedom",
+                "settings": {}
+              }
+            ]
+          }
+      owner: root
+      group: root
+      mode: '0644'
+      notify:
+        - restart v2ray
+
+    # Step 7: Deploy the NGINX configuration
+    - name: Deploy NGINX configuration
+      copy:
+        src: ./default
+        dest: "{{ nginx_sites_enabled }}"
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - reload nginx
+
+    # Step 8: Deploy custom scripts
+    - name: Deploy add_connection.sh script
+      copy:
+        src: ./add_connection.sh
+        dest: /usr/local/bin/add_connection.sh
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy generate_qr.sh script
+      copy:
+        src: ./generate_qr.sh
+        dest: /usr/local/bin/generate_qr.sh
+        owner: root
+        group: root
+        mode: '0755'
+
+    # Step 9: Ensure NGINX is enabled and running
+    - name: Start and enable NGINX
+      systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+  handlers:
+    # Handler to restart V2Ray service
+    - name: restart v2ray
+      systemd:
+        name: v2ray
+        state: restarted
+
+    # Handler to reload NGINX service
+    - name: reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
